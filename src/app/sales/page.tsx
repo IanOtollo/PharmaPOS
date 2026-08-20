@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
-import { Receipt } from "lucide-react";
+import Link from "next/link";
+import { Receipt, Users } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SaleRow } from "@/components/sales/SaleRow";
 import { cn } from "@/lib/utils";
+import { getRole } from "@/lib/auth";
 
 const DATE_FILTERS = ["Today", "This Week", "This Month", "All"] as const;
 const METHOD_FILTERS = ["All", "cash", "mpesa", "card"] as const;
@@ -21,7 +24,12 @@ export default function SalesPage() {
   const [term, setTerm] = useState("");
   const [dateFilter, setDateFilter] = useState<(typeof DATE_FILTERS)[number]>("All");
   const [methodFilter, setMethodFilter] = useState<(typeof METHOD_FILTERS)[number]>("All");
+  const [isAdmin, setIsAdmin] = useState(false);
   const sales = useQuery(api.sales.list);
+
+  useEffect(() => {
+    setIsAdmin(getRole() === "admin");
+  }, []);
 
   const filtered = useMemo(() => {
     if (!sales) return undefined;
@@ -45,7 +53,18 @@ export default function SalesPage() {
 
   return (
     <div>
-      <PageHeader title="Sales History" />
+      <PageHeader
+        title="Sales History"
+        actions={
+          isAdmin ? (
+            <Link href="/customers">
+              <Button size="sm" variant="secondary">
+                <Users size={16} /> Customers
+              </Button>
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-col gap-3 px-4 sm:px-6">
         <SearchInput

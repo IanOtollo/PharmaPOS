@@ -6,7 +6,8 @@ import { CheckCircle2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { cn, formatKES, calculateVAT } from "@/lib/utils";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import { CURRENT_STAFF_KEY } from "@/components/auth/AppGate";
@@ -173,18 +174,13 @@ export function CheckoutModal({
           )}
 
           {staff !== undefined && staff.length > 0 && (
-            <Select
+            <Dropdown
               label="Served by (optional)"
               value={servedBy}
-              onChange={(e) => setServedBy(e.target.value)}
-            >
-              <option value="">Not specified</option>
-              {staff.map((s) => (
-                <option key={s._id} value={s.name}>
-                  {s.name}
-                </option>
-              ))}
-            </Select>
+              onChange={setServedBy}
+              placeholder="Not specified"
+              options={staff.map((s) => ({ value: s.name, label: s.name }))}
+            />
           )}
 
           <div className="grid grid-cols-2 gap-3">

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { logAudit } from "./audit";
 
 export const get = query({
   args: {},
@@ -7,7 +8,7 @@ export const get = query({
     const settings = await ctx.db.query("settings").first();
     return (
       settings ?? {
-        pharmacyName: "PharmaPOS",
+        pharmacyName: "Favil Chemist & Pharmacy",
         passcode: "1234",
       }
     );
@@ -26,5 +27,6 @@ export const update = mutation({
     } else {
       await ctx.db.insert("settings", args);
     }
+    await logAudit(ctx, "settings.update", "Updated pharmacy settings");
   },
 });

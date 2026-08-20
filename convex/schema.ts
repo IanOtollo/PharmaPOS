@@ -73,4 +73,41 @@ export default defineSchema({
     name: v.string(),
     pin: v.optional(v.string()),
   }),
+
+  customers: defineTable({
+    name: v.string(),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
+  }).index("by_phone", ["phone"]),
+
+  suppliers: defineTable({
+    name: v.string(),
+    contactPerson: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    address: v.optional(v.string()),
+  }),
+
+  purchases: defineTable({
+    purchaseNumber: v.string(),
+    supplierId: v.id("suppliers"),
+    supplierName: v.string(),
+    items: v.array(
+      v.object({
+        productId: v.id("products"),
+        productName: v.string(),
+        quantity: v.number(),
+        buyingPrice: v.number(),
+        lineTotal: v.number(),
+      })
+    ),
+    totalCost: v.number(),
+    referenceNumber: v.optional(v.string()),
+  }).index("by_purchaseNumber", ["purchaseNumber"]),
+
+  auditLogs: defineTable({
+    action: v.string(),
+    description: v.string(),
+    performedBy: v.optional(v.string()),
+  }),
 });

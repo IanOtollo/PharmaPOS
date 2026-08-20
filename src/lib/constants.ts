@@ -4,15 +4,6 @@ export const PAYMENT_METHODS = [
   { value: "card", label: "Card" },
 ] as const;
 
-export const DEFAULT_CATEGORIES = [
-  "Painkillers",
-  "Antibiotics",
-  "OTC",
-  "Supplements",
-  "First Aid",
-  "Prescription",
-];
-
 export const UNITS = [
   "tablets",
   "bottles",

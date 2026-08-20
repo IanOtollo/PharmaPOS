@@ -3,10 +3,12 @@
 import { Suspense, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { useSearchParams } from "next/navigation";
-import { Package } from "lucide-react";
+import Link from "next/link";
+import { Package, Truck, ShoppingBasket } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ExpiryAlerts } from "@/components/inventory/ExpiryAlerts";
@@ -58,7 +60,23 @@ function InventoryContent() {
 
   return (
     <div>
-      <PageHeader title="Inventory" />
+      <PageHeader
+        title="Inventory"
+        actions={
+          <>
+            <Link href="/suppliers">
+              <Button size="sm" variant="secondary">
+                <Truck size={16} /> Suppliers
+              </Button>
+            </Link>
+            <Link href="/purchases">
+              <Button size="sm" variant="secondary">
+                <ShoppingBasket size={16} /> Purchases
+              </Button>
+            </Link>
+          </>
+        }
+      />
       <ExpiryAlerts />
 
       <div className="flex flex-col gap-3 px-4 sm:px-6">

@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductForm } from "@/components/products/ProductForm";
-import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { cn, formatKES } from "@/lib/utils";
 
 function ProductsContent() {
@@ -26,6 +25,7 @@ function ProductsContent() {
   const [editing, setEditing] = useState<Doc<"products"> | null>(null);
 
   const products = useQuery(api.products.search, { term, category });
+  const categories = useQuery(api.categories.list);
 
   function openAdd() {
     setEditing(null);
@@ -79,7 +79,7 @@ function ProductsContent() {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-1">
-          {["All", ...DEFAULT_CATEGORIES].map((c) => (
+          {["All", ...(categories ?? []).map((c) => c.name)].map((c) => (
             <button
               key={c}
               onClick={() => setCategory(c)}

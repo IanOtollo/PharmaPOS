@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { TopNav } from "@/components/layout/TopNav";
+import {
+  AUTH_SESSION_KEY,
+  CURRENT_STAFF_KEY,
+  STAFF_DEFAULT_PATH,
+  getRole,
+  isPathAllowed,
+} from "@/lib/auth";
 
-export const AUTH_SESSION_KEY = "pharmapos_unlocked";
-export const CURRENT_STAFF_KEY = "pharmapos_current_staff";
+export { AUTH_SESSION_KEY, CURRENT_STAFF_KEY };
 
 export function AppGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,22 +21,29 @@ export function AppGate({ children }: { children: React.ReactNode }) {
   const [unlocked, setUnlocked] = useState(false);
 
   useEffect(() => {
-    setUnlocked(sessionStorage.getItem(AUTH_SESSION_KEY) === "1");
+    const isUnlocked = sessionStorage.getItem(AUTH_SESSION_KEY) === "1";
+    setUnlocked(isUnlocked);
     setChecked(true);
-  }, []);
 
-  useEffect(() => {
-    if (!checked || pathname === "/auth") return;
-    if (!unlocked) {
+    if (pathname === "/auth") return;
+
+    if (!isUnlocked) {
       router.replace(`/auth?next=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [checked, unlocked, pathname, router]);
+
+    const role = getRole();
+    if (!isPathAllowed(role, pathname)) {
+      router.replace(STAFF_DEFAULT_PATH);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   if (pathname === "/auth") {
     return <>{children}</>;
   }
 
-  if (!checked || !unlocked) {
+  if (!checked || !unlocked || !isPathAllowed(getRole(), pathname)) {
     return <div className="min-h-screen bg-background" />;
   }
 

@@ -8,7 +8,6 @@ import { Doc } from "../../../convex/_generated/dataModel";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { cn, formatKES } from "@/lib/utils";
 
 export function ProductSearch({
@@ -19,6 +18,7 @@ export function ProductSearch({
   const [term, setTerm] = useState("");
   const [category, setCategory] = useState("All");
   const products = useQuery(api.products.search, { term, category });
+  const categories = useQuery(api.categories.list);
 
   return (
     <div className="flex flex-col gap-3">
@@ -29,7 +29,7 @@ export function ProductSearch({
         onChange={setTerm}
       />
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {["All", ...DEFAULT_CATEGORIES].map((c) => (
+        {["All", ...(categories ?? []).map((c) => c.name)].map((c) => (
           <button
             key={c}
             onClick={() => setCategory(c)}

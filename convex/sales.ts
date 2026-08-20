@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { logAudit } from "./audit";
 
 function todayPrefix(): string {
   return new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -63,6 +64,20 @@ export const completeSale = mutation({
       status: "completed",
     });
 
+    if (args.customerPhone?.trim()) {
+      const phone = args.customerPhone.trim();
+      const existing = await ctx.db
+        .query("customers")
+        .withIndex("by_phone", (q) => q.eq("phone", phone))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("customers", {
+          name: args.customerName?.trim() || "Walk-in customer",
+          phone,
+        });
+      }
+    }
+
     return { saleId, saleNumber };
   },
 });
@@ -98,5 +113,6 @@ export const voidSale = mutation({
     }
 
     await ctx.db.patch(args.id, { status: "voided" });
+    await logAudit(ctx, "sale.void", `Voided sale ${sale.saleNumber}`);
   },
 });

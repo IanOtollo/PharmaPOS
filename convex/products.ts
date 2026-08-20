@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { logAudit } from "./audit";
 
 export const list = query({
   args: {
@@ -76,6 +77,7 @@ export const create = mutation({
       ...args,
       isActive: true,
     });
+    await logAudit(ctx, "product.create", `Added product "${args.name}"`);
     return id;
   },
 });
@@ -107,13 +109,16 @@ export const update = mutation({
       throw new Error(`SKU "${rest.sku}" already exists`);
     }
     await ctx.db.patch(id, rest);
+    await logAudit(ctx, "product.update", `Updated product "${rest.name}"`);
   },
 });
 
 export const remove = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.id);
     await ctx.db.patch(args.id, { isActive: false });
+    await logAudit(ctx, "product.remove", `Removed product "${product?.name ?? args.id}"`);
   },
 });
 

@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { Button } from "@/components/ui/Button";
-import { DEFAULT_CATEGORIES, UNITS } from "@/lib/constants";
+import { UNITS } from "@/lib/constants";
 import { useToast } from "@/components/ui/Toast";
 
 type FormState = {
@@ -28,7 +29,7 @@ type FormState = {
 const EMPTY: FormState = {
   name: "",
   genericName: "",
-  category: DEFAULT_CATEGORIES[0],
+  category: "",
   sku: "",
   barcode: "",
   costPrice: "",
@@ -58,7 +59,15 @@ export function ProductForm({
     api.products.generateSku,
     !product ? { category: form.category } : "skip"
   );
+  const categories = useQuery(api.categories.list);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!product && !form.category && categories && categories.length > 0) {
+      set("category", categories[0].name);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories, product]);
 
   useEffect(() => {
     if (product) {
@@ -159,28 +168,18 @@ export function ProductForm({
       />
 
       <div className="grid grid-cols-2 gap-3">
-        <Select
+        <Dropdown
           label="Category"
           value={form.category}
-          onChange={(e) => set("category", e.target.value)}
-        >
-          {DEFAULT_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-        <Select
+          onChange={(v) => set("category", v)}
+          options={(categories ?? []).map((c) => ({ value: c.name, label: c.name }))}
+        />
+        <Dropdown
           label="Unit"
           value={form.unit}
-          onChange={(e) => set("unit", e.target.value)}
-        >
-          {UNITS.map((u) => (
-            <option key={u} value={u}>
-              {u}
-            </option>
-          ))}
-        </Select>
+          onChange={(v) => set("unit", v)}
+          options={UNITS.map((u) => ({ value: u, label: u }))}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

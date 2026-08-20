@@ -2,12 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { User, UserPlus, X } from "lucide-react";
+import { User, UserPlus, X, Tag, Plus, History } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+import { formatDateTime } from "@/lib/utils";
+
+const AUDIT_LABEL: Record<string, string> = {
+  "product.create": "Product added",
+  "product.update": "Product updated",
+  "product.remove": "Product removed",
+  "sale.void": "Sale voided",
+  "staff.create": "Staff added",
+  "staff.remove": "Staff removed",
+  "settings.update": "Settings updated",
+  "purchase.create": "Purchase recorded",
+};
 
 function GeneralSettings() {
   const settings = useQuery(api.settings.get);
@@ -155,8 +167,8 @@ function StaffSettings() {
         Staff added here can be selected as the cashier at checkout.
       </p>
 
-      <form onSubmit={handleAdd} className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <div className="relative flex-1">
+      <form onSubmit={handleAdd} className="mt-4 flex flex-col gap-2">
+        <div className="relative">
           <User
             size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
@@ -168,18 +180,20 @@ function StaffSettings() {
             placeholder="Staff name, e.g. Jane Wanjiru"
           />
         </div>
-        <Input
-          className="sm:w-28"
-          type="password"
-          inputMode="numeric"
-          maxLength={4}
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          placeholder="PIN"
-        />
-        <Button type="submit" size="md" disabled={submitting}>
-          <UserPlus size={16} /> Add
-        </Button>
+        <div className="flex gap-2">
+          <Input
+            className="min-w-0 flex-1"
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            placeholder="PIN"
+          />
+          <Button type="submit" size="md" disabled={submitting} className="shrink-0">
+            <UserPlus size={16} /> Add
+          </Button>
+        </div>
       </form>
 
       <div className="mt-4 flex flex-1 flex-col divide-y divide-border overflow-y-auto">
@@ -216,13 +230,127 @@ function StaffSettings() {
   );
 }
 
+function CategorySettings() {
+  const categories = useQuery(api.categories.list);
+  const create = useMutation(api.categories.create);
+  const remove = useMutation(api.categories.remove);
+  const { showToast } = useToast();
+
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return;
+    setError("");
+    setSubmitting(true);
+    try {
+      await create({ name: name.trim() });
+      setName("");
+      showToast("Category added");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRemove(id: Parameters<typeof remove>[0]["id"], catName: string) {
+    if (!confirm(`Remove category "${catName}"?`)) return;
+    await remove({ id });
+    showToast("Category removed");
+  }
+
+  return (
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface p-6">
+      <p className="font-display text-base font-bold text-text-primary">Categories</p>
+      <p className="mt-1 text-sm text-text-secondary">
+        Categories appear as filter tabs in Products and POS.
+      </p>
+
+      <form onSubmit={handleAdd} className="mt-4 flex gap-2">
+        <div className="relative flex-1">
+          <Tag
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary"
+          />
+          <Input
+            className="pl-9"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Vitamins"
+          />
+        </div>
+        <Button type="submit" size="md" disabled={submitting}>
+          <Plus size={16} />
+        </Button>
+      </form>
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+
+      <div className="mt-4 flex flex-1 flex-col divide-y divide-border overflow-y-auto">
+        {categories === undefined ? (
+          <p className="py-4 text-sm text-text-secondary">Loading…</p>
+        ) : categories.length === 0 ? (
+          <p className="py-4 text-sm text-text-secondary">No categories yet.</p>
+        ) : (
+          categories.map((c) => (
+            <div key={c._id} className="flex items-center justify-between py-3">
+              <span className="text-sm text-text-primary">{c.name}</span>
+              <button
+                onClick={() => handleRemove(c._id, c.name)}
+                className="text-text-secondary transition-colors duration-150 hover:text-danger"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AuditLogSettings() {
+  const logs = useQuery(api.audit.list);
+
+  return (
+    <div className="flex h-full flex-col rounded-lg border border-border bg-surface p-6">
+      <div className="flex items-center gap-2">
+        <History size={16} className="text-text-secondary" />
+        <p className="font-display text-base font-bold text-text-primary">Audit Log</p>
+      </div>
+      <p className="mt-1 text-sm text-text-secondary">Recent administrative activity.</p>
+
+      <div className="mt-4 flex flex-1 flex-col divide-y divide-border overflow-y-auto">
+        {logs === undefined ? (
+          <p className="py-4 text-sm text-text-secondary">Loading…</p>
+        ) : logs.length === 0 ? (
+          <p className="py-4 text-sm text-text-secondary">No activity yet.</p>
+        ) : (
+          logs.map((log) => (
+            <div key={log._id} className="py-2.5">
+              <p className="text-sm text-text-primary">{log.description}</p>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                {AUDIT_LABEL[log.action] ?? log.action} · {formatDateTime(log._creationTime)}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <div className="flex flex-col lg:h-[calc(100vh-8.5rem)]">
       <PageHeader title="Settings" />
-      <div className="flex flex-col gap-4 px-4 pb-4 sm:px-6 lg:min-h-0 lg:flex-1 lg:grid lg:grid-cols-2 lg:gap-4 lg:overflow-hidden lg:pb-0">
+      <div className="flex flex-col gap-4 px-4 pb-4 sm:px-6 lg:min-h-0 lg:flex-1 lg:grid lg:grid-cols-2 lg:gap-4 lg:overflow-hidden lg:pb-0 xl:grid-cols-4">
         <GeneralSettings />
         <StaffSettings />
+        <CategorySettings />
+        <AuditLogSettings />
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ import { api } from "../../../convex/_generated/api";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { Input, Select } from "@/components/ui/Input";
+import { Input } from "@/components/ui/Input";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { useToast } from "@/components/ui/Toast";
 
 const TYPES = [
@@ -91,13 +92,7 @@ export function StockAdjustModal({
           </span>
         </p>
 
-        <Select label="Type" value={type} onChange={(e) => setType(e.target.value)}>
-          {TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </Select>
+        <Dropdown label="Type" value={type} onChange={setType} options={TYPES} />
 
         <Input
           label="Quantity"
