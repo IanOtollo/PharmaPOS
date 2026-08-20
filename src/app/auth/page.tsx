@@ -95,7 +95,9 @@ function AuthContent() {
         )}
       </span>
       <div>
-        <p className="font-display text-lg font-bold text-text-primary">PharmaPOS</p>
+        <p className="font-display text-lg font-bold text-text-primary">
+          {settings?.pharmacyName ?? "PharmaPOS"}
+        </p>
         <p className="mt-1 text-sm text-text-secondary">
           {success ? "Welcome back" : "Enter your PIN to continue"}
         </p>
@@ -112,13 +114,15 @@ function AuthContent() {
 }
 
 export default function AuthPage() {
+  const settings = useQuery(api.settings.get);
+
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
       <Suspense fallback={<p className="text-sm text-text-secondary">Loading…</p>}>
         <AuthContent />
       </Suspense>
       <p className="absolute bottom-6 left-0 right-0 text-center text-xs text-text-secondary">
-        © {new Date().getFullYear()} PharmaPOS
+        © {new Date().getFullYear()} {settings?.pharmacyName ?? "PharmaPOS"}
       </p>
     </div>
   );

@@ -5,6 +5,7 @@ import "./globals.css";
 import { ConvexClientProvider } from "@/components/ConvexClientProvider";
 import { AppGate } from "@/components/auth/AppGate";
 import { ToastProvider } from "@/components/ui/Toast";
+import { DocumentTitle } from "@/components/DocumentTitle";
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full bg-background font-body text-text-primary">
         <ConvexClientProvider>
           <ToastProvider>
+            <DocumentTitle />
             <AppGate>{children}</AppGate>
           </ToastProvider>
         </ConvexClientProvider>
