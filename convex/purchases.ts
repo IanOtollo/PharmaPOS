@@ -73,3 +73,27 @@ export const create = mutation({
     return { id, purchaseNumber };
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("purchases") },
+  handler: async (ctx, args) => {
+    const purchase = await ctx.db.get(args.id);
+    if (!purchase) throw new Error("Purchase not found");
+
+    for (const item of purchase.items) {
+      const product = await ctx.db.get(item.productId);
+      if (product) {
+        await ctx.db.patch(item.productId, {
+          stock: Math.max(0, product.stock - item.quantity),
+        });
+      }
+    }
+
+    await ctx.db.delete(args.id);
+    await logAudit(
+      ctx,
+      "purchase.remove",
+      `Deleted purchase ${purchase.purchaseNumber} and reversed its stock`
+    );
+  },
+});

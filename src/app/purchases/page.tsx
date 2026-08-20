@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Plus, ShoppingBasket, X } from "lucide-react";
+import { Plus, ShoppingBasket, X, Trash2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
-import { Id } from "../../../convex/_generated/dataModel";
+import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -196,9 +196,101 @@ function RecordPurchaseModal({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
+function PurchaseDetailModal({
+  purchase,
+  onClose,
+}: {
+  purchase: Doc<"purchases"> | null;
+  onClose: () => void;
+}) {
+  const remove = useMutation(api.purchases.remove);
+  const { showToast } = useToast();
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!purchase) return;
+    if (
+      !confirm(
+        `Delete purchase ${purchase.purchaseNumber}? Stock added by this purchase will be reversed.`
+      )
+    )
+      return;
+    setDeleting(true);
+    try {
+      await remove({ id: purchase._id });
+      showToast("Purchase deleted, stock reversed");
+      onClose();
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Modal
+      open={!!purchase}
+      onClose={onClose}
+      title={purchase ? purchase.purchaseNumber : ""}
+    >
+      {purchase && (
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-text-secondary">Supplier</p>
+              <p className="text-text-primary">{purchase.supplierName}</p>
+            </div>
+            <div>
+              <p className="text-text-secondary">Date</p>
+              <p className="text-text-primary">{formatDateTime(purchase._creationTime)}</p>
+            </div>
+            {purchase.referenceNumber && (
+              <div className="col-span-2">
+                <p className="text-text-secondary">Reference number</p>
+                <p className="font-numeric text-text-primary">{purchase.referenceNumber}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col divide-y divide-border rounded-md border border-border">
+            {purchase.items.map((item, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-text-primary">{item.productName}</p>
+                  <p className="font-numeric text-xs text-text-secondary">
+                    {item.quantity} × {formatKES(item.buyingPrice)}
+                  </p>
+                </div>
+                <span className="font-numeric shrink-0 text-sm text-text-primary">
+                  {formatKES(item.lineTotal)}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between rounded-md bg-surface-hover px-4 py-3">
+            <span className="text-sm text-text-secondary">Total cost</span>
+            <span className="font-numeric text-lg text-accent">
+              {formatKES(purchase.totalCost)}
+            </span>
+          </div>
+
+          <Button
+            variant="danger"
+            disabled={deleting}
+            onClick={handleDelete}
+            className="self-start"
+          >
+            <Trash2 size={16} /> Delete purchase
+          </Button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 export default function PurchasesPage() {
   const purchases = useQuery(api.purchases.list);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selected, setSelected] = useState<Doc<"purchases"> | null>(null);
 
   return (
     <div>
@@ -228,7 +320,11 @@ export default function PurchasesPage() {
         ) : (
           <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
             {purchases.map((p) => (
-              <div key={p._id} className="flex items-center justify-between gap-3 px-4 py-3">
+              <button
+                key={p._id}
+                onClick={() => setSelected(p)}
+                className="flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-surface-hover"
+              >
                 <div className="min-w-0">
                   <p className="font-numeric text-sm text-text-primary">{p.purchaseNumber}</p>
                   <p className="text-xs text-text-secondary">
@@ -239,13 +335,14 @@ export default function PurchasesPage() {
                 <span className="font-numeric shrink-0 text-sm text-accent">
                   {formatKES(p.totalCost)}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         )}
       </div>
 
       <RecordPurchaseModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <PurchaseDetailModal purchase={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
