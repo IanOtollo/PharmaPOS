@@ -25,14 +25,14 @@ type NavItem = { href: string; label: string; icon: typeof Pill; desktopOnly?: b
 const LEFT_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/products", label: "Products", icon: Pill },
-  { href: "/inventory", label: "Inventory", icon: Package, desktopOnly: true },
   { href: "/customers", label: "Customers", icon: Users, desktopOnly: true },
 ];
 
 const RIGHT_ITEMS: NavItem[] = [
+  { href: "/inventory", label: "Inventory", icon: Package },
   { href: "/suppliers", label: "Suppliers", icon: Truck, desktopOnly: true },
   { href: "/purchases", label: "Purchases", icon: ShoppingBasket, desktopOnly: true },
-  { href: "/sales", label: "Sales", icon: Receipt },
+  { href: "/sales", label: "Sales", icon: Receipt, desktopOnly: true },
   { href: "/reports", label: "Reports", icon: BarChart3, desktopOnly: true },
   { href: "/settings", label: "Settings", icon: Settings, desktopOnly: true },
 ];
