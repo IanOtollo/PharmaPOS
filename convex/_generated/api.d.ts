@@ -19,6 +19,7 @@ import type * as reports from "../reports.js";
 import type * as sales from "../sales.js";
 import type * as settings from "../settings.js";
 import type * as staff from "../staff.js";
+import type * as supplierReturns from "../supplierReturns.js";
 import type * as suppliers from "../suppliers.js";
 
 import type {
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   sales: typeof sales;
   settings: typeof settings;
   staff: typeof staff;
+  supplierReturns: typeof supplierReturns;
   suppliers: typeof suppliers;
 }>;
 

@@ -12,12 +12,14 @@ import {
   CalendarClock,
   ChevronRight,
   ArrowUpRight,
+  PackageCheck,
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LiveClock } from "@/components/dashboard/LiveClock";
 import { RevenueChart } from "@/components/reports/RevenueChart";
-import { cn, formatKES } from "@/lib/utils";
+import { Badge } from "@/components/ui/Badge";
+import { cn, formatKES, formatDateTime } from "@/lib/utils";
 
 const TREND_RANGES = [
   { label: "Today", value: 1 },
@@ -53,7 +55,7 @@ export default function DashboardPage() {
         <LiveClock />
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <StatCard label="Today's Revenue" value={formatKES(summary.revenue)} icon={Wallet} />
         <StatCard label="Today's Sales" value={String(summary.salesCount)} icon={Receipt} />
         <StatCard label="Items Sold" value={String(summary.itemsSold)} icon={Package} />
@@ -62,6 +64,7 @@ export default function DashboardPage() {
           value={formatKES(summary.avgSale)}
           icon={TrendingUp}
         />
+        <StatCard label="Products" value={String(summary.productCount)} icon={PackageCheck} />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -159,6 +162,36 @@ export default function DashboardPage() {
                       {count}
                     </span>
                   </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-surface p-6">
+            <p className="mb-4 font-display text-base font-bold text-text-primary">
+              Recent transactions
+            </p>
+            {summary.recentTransactions.length === 0 ? (
+              <p className="text-sm text-text-secondary">No sales yet.</p>
+            ) : (
+              <div className="flex flex-col divide-y divide-border">
+                {summary.recentTransactions.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`/sales/${t.id}`}
+                    className="flex items-center justify-between gap-2 py-2.5 transition-colors duration-150 hover:text-accent"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-numeric text-sm text-text-primary">{t.saleNumber}</p>
+                      <p className="text-xs text-text-secondary">{formatDateTime(t.date)}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {t.status === "voided" && <Badge tone="danger">Voided</Badge>}
+                      <span className="font-numeric text-sm text-accent">
+                        {formatKES(t.totalAmount)}
+                      </span>
+                    </div>
+                  </Link>
                 ))}
               </div>
             )}

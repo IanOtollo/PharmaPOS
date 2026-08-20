@@ -53,6 +53,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     genericName: v.optional(v.string()),
+    description: v.optional(v.string()),
     category: v.string(),
     sku: v.string(),
     barcode: v.optional(v.string()),
@@ -87,6 +88,7 @@ export const update = mutation({
     id: v.id("products"),
     name: v.string(),
     genericName: v.optional(v.string()),
+    description: v.optional(v.string()),
     category: v.string(),
     sku: v.string(),
     barcode: v.optional(v.string()),

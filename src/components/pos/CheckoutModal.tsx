@@ -8,8 +8,8 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dropdown } from "@/components/ui/Dropdown";
-import { cn, formatKES, calculateVAT } from "@/lib/utils";
-import { PAYMENT_METHODS } from "@/lib/constants";
+import { cn, formatKES } from "@/lib/utils";
+import { PAYMENT_METHODS, VAT_RATE } from "@/lib/constants";
 import { CURRENT_STAFF_KEY } from "@/components/auth/AppGate";
 import type { CartLine } from "@/components/pos/cart";
 
@@ -25,6 +25,7 @@ export function CheckoutModal({
   onComplete: () => void;
 }) {
   const [method, setMethod] = useState<"cash" | "mpesa" | "card">("cash");
+  const [discount, setDiscount] = useState("");
   const [amountReceived, setAmountReceived] = useState("");
   const [mpesaRef, setMpesaRef] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -35,6 +36,7 @@ export function CheckoutModal({
   const [result, setResult] = useState<{ saleNumber: string } | null>(null);
   const completeSale = useMutation(api.sales.completeSale);
   const staff = useQuery(api.staff.list);
+  const activeStaff = (staff ?? []).filter((s) => s.isActive);
 
   useEffect(() => {
     if (open) {
@@ -43,12 +45,16 @@ export function CheckoutModal({
   }, [open]);
 
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
-  const { vat, total } = calculateVAT(subtotal);
-  const received = Number(amountReceived) || 0;
+  const discountAmount = Math.min(Number(discount) || 0, subtotal);
+  const discountedSubtotal = subtotal - discountAmount;
+  const vat = discountedSubtotal * VAT_RATE;
+  const total = discountedSubtotal + vat;
+  const received = method === "cash" ? Number(amountReceived) || 0 : total;
   const change = received - total;
 
   function handleClose() {
     setMethod("cash");
+    setDiscount("");
     setAmountReceived("");
     setMpesaRef("");
     setCustomerName("");
@@ -81,10 +87,12 @@ export function CheckoutModal({
           lineTotal: l.unitPrice * l.quantity,
         })),
         subtotal,
+        discountAmount: discountAmount > 0 ? discountAmount : undefined,
         vatAmount: vat,
         totalAmount: total,
         paymentMethod: method,
         mpesaRef: method === "mpesa" ? mpesaRef.trim() : undefined,
+        amountReceived: method === "cash" ? received || total : total,
         customerName: customerName.trim() || undefined,
         customerPhone: customerPhone.trim() || undefined,
         servedBy: servedBy || undefined,
@@ -122,10 +130,37 @@ export function CheckoutModal({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between rounded-md bg-surface-hover px-4 py-3">
-            <span className="text-sm text-text-secondary">Total due</span>
-            <span className="font-numeric text-xl text-accent">{formatKES(total)}</span>
+          <div className="flex flex-col gap-1.5 rounded-md bg-surface-hover px-4 py-3">
+            <div className="flex items-center justify-between text-sm text-text-secondary">
+              <span>Subtotal</span>
+              <span className="font-numeric">{formatKES(subtotal)}</span>
+            </div>
+            {discountAmount > 0 && (
+              <div className="flex items-center justify-between text-sm text-danger">
+                <span>Discount</span>
+                <span className="font-numeric">-{formatKES(discountAmount)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between text-sm text-text-secondary">
+              <span>VAT (16%)</span>
+              <span className="font-numeric">{formatKES(vat)}</span>
+            </div>
+            <div className="flex items-center justify-between text-base font-medium text-text-primary">
+              <span>Total due</span>
+              <span className="font-numeric text-xl text-accent">{formatKES(total)}</span>
+            </div>
           </div>
+
+          <Input
+            label="Discount (KES, optional)"
+            type="number"
+            min="0"
+            max={subtotal}
+            step="0.01"
+            value={discount}
+            onChange={(e) => setDiscount(e.target.value)}
+            placeholder="0.00"
+          />
 
           <div className="flex rounded-md border border-border p-1">
             {PAYMENT_METHODS.map((m) => (
@@ -173,13 +208,13 @@ export function CheckoutModal({
             />
           )}
 
-          {staff !== undefined && staff.length > 0 && (
+          {activeStaff.length > 0 && (
             <Dropdown
               label="Served by (optional)"
               value={servedBy}
               onChange={setServedBy}
               placeholder="Not specified"
-              options={staff.map((s) => ({ value: s.name, label: s.name }))}
+              options={activeStaff.map((s) => ({ value: s.name, label: s.name }))}
             />
           )}
 

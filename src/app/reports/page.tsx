@@ -65,6 +65,7 @@ export default function ReportsPage() {
   const [rangeDays, setRangeDays] = useState(30);
   const report = useQuery(api.reports.summary, { rangeDays });
   const valuation = useQuery(api.reports.inventoryValuation);
+  const supplierReport = useQuery(api.reports.supplierReport, { rangeDays });
 
   const totalPayments = report
     ? Object.values(report.paymentBreakdown).reduce((a, b) => a + b, 0)
@@ -235,6 +236,60 @@ export default function ReportsPage() {
                     {valuation.productCount} active product
                     {valuation.productCount === 1 ? "" : "s"} in stock
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-lg border border-border bg-surface p-6">
+              <p className="mb-4 font-display text-base font-bold text-text-primary">
+                Top customers
+              </p>
+              {report.topCustomers.length === 0 ? (
+                <p className="text-sm text-text-secondary">No customer sales for this period.</p>
+              ) : (
+                <div className="flex flex-col divide-y divide-border">
+                  {report.topCustomers.map((c) => (
+                    <div key={c.phone} className="flex items-center justify-between py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-text-primary">{c.name}</p>
+                        <p className="font-numeric text-xs text-text-secondary">
+                          {c.visits} visit{c.visits === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      <span className="font-numeric shrink-0 text-sm text-accent">
+                        {formatKES(c.revenue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border bg-surface p-6">
+              <p className="mb-4 font-display text-base font-bold text-text-primary">
+                Purchases by supplier
+              </p>
+              {supplierReport === undefined ? (
+                <p className="text-sm text-text-secondary">Loading…</p>
+              ) : supplierReport.length === 0 ? (
+                <p className="text-sm text-text-secondary">No purchases for this period.</p>
+              ) : (
+                <div className="flex flex-col divide-y divide-border">
+                  {supplierReport.map((s) => (
+                    <div key={s.name} className="flex items-center justify-between py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-text-primary">{s.name}</p>
+                        <p className="font-numeric text-xs text-text-secondary">
+                          {s.orders} order{s.orders === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                      <span className="font-numeric shrink-0 text-sm text-accent">
+                        {formatKES(s.totalCost)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

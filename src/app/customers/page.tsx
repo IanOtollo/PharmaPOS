@@ -29,6 +29,7 @@ function CustomerForm({
   const [name, setName] = useState(customer?.name ?? "");
   const [phone, setPhone] = useState(customer?.phone ?? "");
   const [address, setAddress] = useState(customer?.address ?? "");
+  const [creditBalance, setCreditBalance] = useState(String(customer?.creditBalance ?? 0));
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,16 +37,21 @@ function CustomerForm({
     if (!name.trim()) return;
     setSubmitting(true);
     try {
-      const payload = {
-        name: name.trim(),
-        phone: phone.trim() || undefined,
-        address: address.trim() || undefined,
-      };
       if (customer) {
-        await update({ id: customer._id, ...payload });
+        await update({
+          id: customer._id,
+          name: name.trim(),
+          phone: phone.trim() || undefined,
+          address: address.trim() || undefined,
+          creditBalance: Number(creditBalance) || 0,
+        });
         showToast("Customer updated");
       } else {
-        await create(payload);
+        await create({
+          name: name.trim(),
+          phone: phone.trim() || undefined,
+          address: address.trim() || undefined,
+        });
         showToast("Customer added");
       }
       onDone();
@@ -64,8 +70,20 @@ function CustomerForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {customer && (
+        <p className="font-numeric text-sm text-text-secondary">{customer.customerNumber}</p>
+      )}
       <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-      <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+      <div className="grid grid-cols-2 gap-3">
+        <Input label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <Input
+          label="Credit balance (KES)"
+          type="number"
+          step="0.01"
+          value={creditBalance}
+          onChange={(e) => setCreditBalance(e.target.value)}
+        />
+      </div>
       <Input label="Address" value={address} onChange={(e) => setAddress(e.target.value)} />
       <div className="mt-2 flex items-center justify-between gap-3">
         {customer ? (
@@ -186,7 +204,8 @@ export default function CustomersPage() {
                 >
                   <p className="truncate text-sm font-medium text-text-primary">{c.name}</p>
                   <p className="font-numeric text-xs text-text-secondary">
-                    {c.phone || "No phone"}
+                    {c.customerNumber} · {c.phone || "No phone"}
+                    {c.creditBalance > 0 && ` · Credit ${formatKES(c.creditBalance)}`}
                   </p>
                 </button>
                 {c.phone && (

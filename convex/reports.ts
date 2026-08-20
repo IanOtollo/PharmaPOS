@@ -89,6 +89,26 @@ export const summary = query({
       (a, b) => b.revenue - a.revenue
     );
 
+    const customerTotals = new Map<
+      string,
+      { name: string; phone: string; revenue: number; visits: number }
+    >();
+    for (const s of sales) {
+      if (!s.customerPhone) continue;
+      const cur = customerTotals.get(s.customerPhone) ?? {
+        name: s.customerName || "Walk-in customer",
+        phone: s.customerPhone,
+        revenue: 0,
+        visits: 0,
+      };
+      cur.revenue += s.totalAmount;
+      cur.visits += 1;
+      customerTotals.set(s.customerPhone, cur);
+    }
+    const topCustomers = Array.from(customerTotals.values())
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+
     const totalSubtotal = sales.reduce((s, x) => s + x.subtotal, 0);
     const grossProfit = totalSubtotal - totalCost;
     const marginPercent = totalSubtotal > 0 ? (grossProfit / totalSubtotal) * 100 : 0;
@@ -116,6 +136,7 @@ export const summary = query({
       topProducts,
       categoryBreakdown,
       staffPerformance,
+      topCustomers,
       grossProfit,
       marginPercent,
       transactions,
@@ -130,5 +151,28 @@ export const inventoryValuation = query({
     const costValue = products.reduce((s, p) => s + p.costPrice * p.stock, 0);
     const retailValue = products.reduce((s, p) => s + p.sellingPrice * p.stock, 0);
     return { costValue, retailValue, productCount: products.length };
+  },
+});
+
+export const supplierReport = query({
+  args: { rangeDays: v.number() },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("purchases").collect();
+    const cutoff = args.rangeDays > 0 ? Date.now() - args.rangeDays * 24 * 60 * 60 * 1000 : 0;
+    const purchases = all.filter((p) => p._creationTime >= cutoff);
+
+    const totals = new Map<string, { name: string; totalCost: number; orders: number }>();
+    for (const p of purchases) {
+      const cur = totals.get(p.supplierName) ?? {
+        name: p.supplierName,
+        totalCost: 0,
+        orders: 0,
+      };
+      cur.totalCost += p.totalCost;
+      cur.orders += 1;
+      totals.set(p.supplierName, cur);
+    }
+
+    return Array.from(totals.values()).sort((a, b) => b.totalCost - a.totalCost);
   },
 });

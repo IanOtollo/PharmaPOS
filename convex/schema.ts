@@ -5,6 +5,7 @@ export default defineSchema({
   products: defineTable({
     name: v.string(),
     genericName: v.optional(v.string()),
+    description: v.optional(v.string()),
     category: v.string(),
     sku: v.string(),
     barcode: v.optional(v.string()),
@@ -35,15 +36,19 @@ export default defineSchema({
       })
     ),
     subtotal: v.number(),
+    discountAmount: v.optional(v.number()),
     vatAmount: v.number(),
     totalAmount: v.number(),
     paymentMethod: v.string(),
     mpesaRef: v.optional(v.string()),
+    amountReceived: v.optional(v.number()),
+    changeGiven: v.optional(v.number()),
     customerName: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
     status: v.string(),
     servedBy: v.optional(v.string()),
     notes: v.optional(v.string()),
+    voidReason: v.optional(v.string()),
   })
     .index("by_status", ["status"])
     .index("by_saleNumber", ["saleNumber"]),
@@ -72,12 +77,15 @@ export default defineSchema({
   staff: defineTable({
     name: v.string(),
     pin: v.optional(v.string()),
+    isActive: v.boolean(),
   }),
 
   customers: defineTable({
+    customerNumber: v.string(),
     name: v.string(),
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
+    creditBalance: v.number(),
   }).index("by_phone", ["phone"]),
 
   suppliers: defineTable({
@@ -104,6 +112,21 @@ export default defineSchema({
     totalCost: v.number(),
     referenceNumber: v.optional(v.string()),
   }).index("by_purchaseNumber", ["purchaseNumber"]),
+
+  supplierReturns: defineTable({
+    returnNumber: v.string(),
+    supplierId: v.id("suppliers"),
+    supplierName: v.string(),
+    items: v.array(
+      v.object({
+        productId: v.id("products"),
+        productName: v.string(),
+        quantity: v.number(),
+      })
+    ),
+    reason: v.string(),
+    performedBy: v.optional(v.string()),
+  }),
 
   auditLogs: defineTable({
     action: v.string(),

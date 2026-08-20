@@ -60,6 +60,18 @@ export const summary = query({
       return t >= now && t - now <= ninetyDays;
     }).length;
 
+    const recentTransactions = sales
+      .slice()
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, 5)
+      .map((s) => ({
+        id: s._id,
+        saleNumber: s.saleNumber,
+        date: s._creationTime,
+        totalAmount: s.totalAmount,
+        status: s.status,
+      }));
+
     return {
       revenue,
       salesCount,
@@ -69,6 +81,8 @@ export const summary = query({
       paymentBreakdown,
       lowStockCount,
       expiringSoonCount,
+      productCount: active.length,
+      recentTransactions,
     };
   },
 });

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Plus, ShoppingBasket, X, Trash2 } from "lucide-react";
+import { Plus, ShoppingBasket, X, Trash2, Undo2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Doc, Id } from "../../../convex/_generated/dataModel";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -13,7 +13,8 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useToast } from "@/components/ui/Toast";
-import { formatKES, formatDateTime } from "@/lib/utils";
+import { formatKES, formatDateTime, cn } from "@/lib/utils";
+import { CURRENT_STAFF_KEY } from "@/components/auth/AppGate";
 
 type Line = {
   productId: Id<"products">;
@@ -196,6 +197,158 @@ function RecordPurchaseModal({ open, onClose }: { open: boolean; onClose: () => 
   );
 }
 
+type ReturnLine = { productId: Id<"products">; productName: string; quantity: number };
+
+function RecordReturnModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const suppliers = useQuery(api.suppliers.list);
+  const create = useMutation(api.supplierReturns.create);
+  const { showToast } = useToast();
+
+  const [supplierId, setSupplierId] = useState<Id<"suppliers"> | "">("");
+  const [reason, setReason] = useState("");
+  const [lines, setLines] = useState<ReturnLine[]>([]);
+  const [term, setTerm] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const products = useQuery(api.products.search, term.trim() ? { term, category: "All" } : "skip");
+
+  function addLine(id: Id<"products">, name: string) {
+    if (lines.some((l) => l.productId === id)) return;
+    setLines((prev) => [...prev, { productId: id, productName: name, quantity: 1 }]);
+    setTerm("");
+  }
+
+  function updateLine(id: Id<"products">, quantity: number) {
+    setLines((prev) => prev.map((l) => (l.productId === id ? { ...l, quantity } : l)));
+  }
+
+  function removeLine(id: Id<"products">) {
+    setLines((prev) => prev.filter((l) => l.productId !== id));
+  }
+
+  function reset() {
+    setSupplierId("");
+    setReason("");
+    setLines([]);
+    setTerm("");
+    setError("");
+  }
+
+  function handleClose() {
+    reset();
+    onClose();
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!supplierId) return setError("Select a supplier");
+    if (lines.length === 0) return setError("Add at least one product");
+    if (lines.some((l) => l.quantity <= 0)) return setError("Every line needs a quantity greater than 0");
+    if (!reason.trim()) return setError("A reason is required");
+
+    setSubmitting(true);
+    try {
+      await create({
+        supplierId,
+        items: lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
+        reason: reason.trim(),
+        performedBy: sessionStorage.getItem(CURRENT_STAFF_KEY) ?? undefined,
+      });
+      showToast("Return recorded, stock updated");
+      handleClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={handleClose} title="Return to supplier" maxWidth="max-w-2xl">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Dropdown
+          label="Supplier"
+          value={supplierId}
+          onChange={(v) => setSupplierId(v as Id<"suppliers">)}
+          placeholder="Select supplier"
+          options={(suppliers ?? []).map((s) => ({ value: s._id, label: s.name }))}
+        />
+
+        <div>
+          <p className="mb-1.5 text-sm text-text-secondary">Add products</p>
+          <div className="relative">
+            <SearchInput value={term} onChange={setTerm} placeholder="Search products…" />
+            {term.trim() && (
+              <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-surface shadow-sm">
+                {products === undefined ? (
+                  <p className="px-3 py-2 text-sm text-text-secondary">Searching…</p>
+                ) : products.length === 0 ? (
+                  <p className="px-3 py-2 text-sm text-text-secondary">No products found.</p>
+                ) : (
+                  products.slice(0, 6).map((p) => (
+                    <button
+                      key={p._id}
+                      type="button"
+                      onClick={() => addLine(p._id, p.name)}
+                      className="block w-full px-3 py-2 text-left text-sm text-text-primary transition-colors duration-150 hover:bg-surface-hover"
+                    >
+                      {p.name}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {lines.length > 0 && (
+          <div className="flex flex-col divide-y divide-border rounded-md border border-border">
+            {lines.map((l) => (
+              <div key={l.productId} className="flex items-center gap-2 p-3">
+                <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
+                  {l.productName}
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  value={l.quantity}
+                  onChange={(e) => updateLine(l.productId, Number(e.target.value))}
+                  className="h-9 w-16 rounded-md border border-border bg-surface px-2 text-center text-sm text-text-primary outline-none focus:border-accent"
+                  placeholder="Qty"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeLine(l.productId)}
+                  className="text-text-secondary transition-colors duration-150 hover:text-danger"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <Input
+          label="Reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Damaged in transit, expired stock"
+          required
+        />
+
+        {error && (
+          <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
+        )}
+
+        <Button type="submit" disabled={submitting} variant="danger">
+          {submitting ? "Saving…" : "Return to supplier & update stock"}
+        </Button>
+      </form>
+    </Modal>
+  );
+}
+
 function PurchaseDetailModal({
   purchase,
   onClose,
@@ -287,9 +440,43 @@ function PurchaseDetailModal({
   );
 }
 
+function ReturnsList() {
+  const returns = useQuery(api.supplierReturns.list);
+
+  if (returns === undefined) {
+    return <p className="py-16 text-center text-sm text-text-secondary">Loading…</p>;
+  }
+  if (returns.length === 0) {
+    return (
+      <EmptyState
+        icon={Undo2}
+        title="No returns recorded"
+        description="Returns sent back to a supplier will appear here."
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+      {returns.map((r) => (
+        <div key={r._id} className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="min-w-0">
+            <p className="font-numeric text-sm text-text-primary">{r.returnNumber}</p>
+            <p className="text-xs text-text-secondary">
+              {r.supplierName} · {formatDateTime(r._creationTime)} · {r.items.length} item
+              {r.items.length === 1 ? "" : "s"} · {r.reason}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PurchasesPage() {
   const purchases = useQuery(api.purchases.list);
+  const [tab, setTab] = useState<"purchases" | "returns">("purchases");
   const [modalOpen, setModalOpen] = useState(false);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [selected, setSelected] = useState<Doc<"purchases"> | null>(null);
 
   return (
@@ -297,14 +484,38 @@ export default function PurchasesPage() {
       <PageHeader
         title="Purchases"
         actions={
-          <Button size="sm" onClick={() => setModalOpen(true)}>
-            <Plus size={16} /> Record purchase
-          </Button>
+          <>
+            <Button size="sm" variant="secondary" onClick={() => setReturnModalOpen(true)}>
+              <Undo2 size={16} /> Return to supplier
+            </Button>
+            <Button size="sm" onClick={() => setModalOpen(true)}>
+              <Plus size={16} /> Record purchase
+            </Button>
+          </>
         }
       />
 
+      <div className="flex gap-2 px-4 pb-1 sm:px-6">
+        {(["purchases", "returns"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cn(
+              "shrink-0 rounded-md px-3 py-1.5 text-sm capitalize transition-colors duration-150",
+              tab === t
+                ? "bg-accent text-background"
+                : "border border-border text-text-secondary hover:bg-surface-hover"
+            )}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
       <div className="px-4 py-4 sm:px-6">
-        {purchases === undefined ? (
+        {tab === "returns" ? (
+          <ReturnsList />
+        ) : purchases === undefined ? (
           <p className="py-16 text-center text-sm text-text-secondary">Loading…</p>
         ) : purchases.length === 0 ? (
           <EmptyState
@@ -342,6 +553,7 @@ export default function PurchasesPage() {
       </div>
 
       <RecordPurchaseModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <RecordReturnModal open={returnModalOpen} onClose={() => setReturnModalOpen(false)} />
       <PurchaseDetailModal purchase={selected} onClose={() => setSelected(null)} />
     </div>
   );

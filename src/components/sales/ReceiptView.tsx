@@ -26,9 +26,10 @@ export function ReceiptView({ sale }: { sale: Doc<"sales"> }) {
 
   async function handleVoid() {
     if (!confirm(`Void sale ${sale.saleNumber}? Stock will be restored.`)) return;
+    const reason = prompt("Reason for voiding this sale (optional):") ?? undefined;
     setVoiding(true);
     try {
-      await voidSale({ id: sale._id });
+      await voidSale({ id: sale._id, reason: reason?.trim() || undefined });
       showToast("Sale voided");
       router.refresh();
     } catch (err) {
@@ -58,8 +59,11 @@ export function ReceiptView({ sale }: { sale: Doc<"sales"> }) {
           </span>
         </div>
         {sale.status === "voided" && (
-          <div className="mt-2 flex justify-center">
+          <div className="mt-2 flex flex-col items-center gap-1">
             <Badge tone="danger">Voided</Badge>
+            {sale.voidReason && (
+              <p className="text-xs text-text-secondary">Reason: {sale.voidReason}</p>
+            )}
           </div>
         )}
 
@@ -88,6 +92,12 @@ export function ReceiptView({ sale }: { sale: Doc<"sales"> }) {
             <span>Subtotal</span>
             <span className="font-numeric">{formatKES(sale.subtotal)}</span>
           </div>
+          {sale.discountAmount ? (
+            <div className="flex justify-between text-danger">
+              <span>Discount</span>
+              <span className="font-numeric">-{formatKES(sale.discountAmount)}</span>
+            </div>
+          ) : null}
           <div className="flex justify-between text-text-secondary">
             <span>VAT (16%)</span>
             <span className="font-numeric">{formatKES(sale.vatAmount)}</span>
@@ -96,6 +106,18 @@ export function ReceiptView({ sale }: { sale: Doc<"sales"> }) {
             <span>Total</span>
             <span className="font-numeric text-accent">{formatKES(sale.totalAmount)}</span>
           </div>
+          {sale.amountReceived !== undefined && (
+            <div className="flex justify-between text-text-secondary">
+              <span>Amount paid</span>
+              <span className="font-numeric">{formatKES(sale.amountReceived)}</span>
+            </div>
+          )}
+          {sale.changeGiven !== undefined && sale.changeGiven > 0 && (
+            <div className="flex justify-between text-text-secondary">
+              <span>Change</span>
+              <span className="font-numeric">{formatKES(sale.changeGiven)}</span>
+            </div>
+          )}
         </div>
 
         <div className="my-4 border-t border-dashed border-border" />

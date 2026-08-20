@@ -1,5 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+
+export async function generateCustomerNumber(ctx: MutationCtx): Promise<string> {
+  const all = await ctx.db.query("customers").collect();
+  return `CUST-${String(all.length + 1).padStart(4, "0")}`;
+}
 
 export const list = query({
   args: {},
@@ -15,7 +20,10 @@ export const search = query({
     if (!args.term.trim()) return all;
     const t = args.term.trim().toLowerCase();
     return all.filter(
-      (c) => c.name.toLowerCase().includes(t) || (c.phone ?? "").includes(t)
+      (c) =>
+        c.name.toLowerCase().includes(t) ||
+        (c.phone ?? "").includes(t) ||
+        c.customerNumber.toLowerCase().includes(t)
     );
   },
 });
@@ -25,9 +33,17 @@ export const create = mutation({
     name: v.string(),
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
+    creditBalance: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("customers", args);
+    const customerNumber = await generateCustomerNumber(ctx);
+    return await ctx.db.insert("customers", {
+      customerNumber,
+      name: args.name,
+      phone: args.phone,
+      address: args.address,
+      creditBalance: args.creditBalance ?? 0,
+    });
   },
 });
 
@@ -37,6 +53,7 @@ export const update = mutation({
     name: v.string(),
     phone: v.optional(v.string()),
     address: v.optional(v.string()),
+    creditBalance: v.number(),
   },
   handler: async (ctx, args) => {
     const { id, ...rest } = args;

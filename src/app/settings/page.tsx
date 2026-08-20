@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { User, UserPlus, X, Tag, Plus, History } from "lucide-react";
+import { User, UserPlus, X, Tag, Plus, History, Power } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { api } from "../../../convex/_generated/api";
+import { Doc } from "../../../convex/_generated/dataModel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 
 const AUDIT_LABEL: Record<string, string> = {
   "product.create": "Product added",
@@ -130,15 +132,105 @@ function GeneralSettings() {
   );
 }
 
+function StaffEditModal({
+  staff,
+  onClose,
+}: {
+  staff: Doc<"staff"> | null;
+  onClose: () => void;
+}) {
+  const update = useMutation(api.staff.update);
+  const setActive = useMutation(api.staff.setActive);
+  const remove = useMutation(api.staff.remove);
+  const { showToast } = useToast();
+
+  const [name, setName] = useState(staff?.name ?? "");
+  const [pin, setPin] = useState(staff?.pin ?? "");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setName(staff?.name ?? "");
+    setPin(staff?.pin ?? "");
+  }, [staff]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!staff || !name.trim()) return;
+    setSubmitting(true);
+    try {
+      await update({ id: staff._id, name: name.trim(), pin: pin.trim() || undefined });
+      showToast("Staff member updated");
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleToggleActive() {
+    if (!staff) return;
+    await setActive({ id: staff._id, isActive: !staff.isActive });
+    showToast(staff.isActive ? "Staff member deactivated" : "Staff member activated");
+  }
+
+  async function handleDelete() {
+    if (!staff) return;
+    if (!confirm(`Permanently remove "${staff.name}"?`)) return;
+    await remove({ id: staff._id });
+    showToast("Staff member removed");
+    onClose();
+  }
+
+  return (
+    <Modal open={!!staff} onClose={onClose} title={staff ? `Edit ${staff.name}` : ""}>
+      {staff && (
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+          <Input
+            label="PIN"
+            type="password"
+            inputMode="numeric"
+            maxLength={4}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+          />
+
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleToggleActive}
+            className="self-start"
+          >
+            <Power size={16} /> {staff.isActive ? "Deactivate" : "Activate"}
+          </Button>
+
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-danger hover:bg-danger/10"
+              onClick={handleDelete}
+            >
+              Delete
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+}
+
 function StaffSettings() {
   const staff = useQuery(api.staff.list);
   const create = useMutation(api.staff.create);
-  const remove = useMutation(api.staff.remove);
   const { showToast } = useToast();
 
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState<Doc<"staff"> | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -152,12 +244,6 @@ function StaffSettings() {
     } finally {
       setSubmitting(false);
     }
-  }
-
-  async function handleRemove(id: Parameters<typeof remove>[0]["id"], staffName: string) {
-    if (!confirm(`Remove "${staffName}" from staff?`)) return;
-    await remove({ id });
-    showToast("Staff member removed");
   }
 
   return (
@@ -203,9 +289,20 @@ function StaffSettings() {
           <p className="py-4 text-sm text-text-secondary">No staff added yet.</p>
         ) : (
           staff.map((s) => (
-            <div key={s._id} className="flex items-center justify-between py-3">
+            <button
+              key={s._id}
+              onClick={() => setEditing(s)}
+              className="flex items-center justify-between py-3 text-left transition-colors duration-150 hover:bg-surface-hover"
+            >
               <div className="flex items-center gap-2">
-                <span className="text-sm text-text-primary">{s.name}</span>
+                <span
+                  className={cn(
+                    "text-sm",
+                    s.isActive ? "text-text-primary" : "text-text-secondary line-through"
+                  )}
+                >
+                  {s.name}
+                </span>
                 {s.pin ? (
                   <span className="rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
                     PIN set
@@ -215,17 +312,18 @@ function StaffSettings() {
                     No PIN
                   </span>
                 )}
+                {!s.isActive && (
+                  <span className="rounded-md bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger">
+                    Inactive
+                  </span>
+                )}
               </div>
-              <button
-                onClick={() => handleRemove(s._id, s.name)}
-                className="text-text-secondary transition-colors duration-150 hover:text-danger"
-              >
-                <X size={16} />
-              </button>
-            </div>
+            </button>
           ))
         )}
       </div>
+
+      <StaffEditModal staff={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

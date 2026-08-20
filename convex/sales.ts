@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "./audit";
+import { generateCustomerNumber } from "./customers";
 
 function todayPrefix(): string {
   return new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -18,10 +19,12 @@ export const completeSale = mutation({
       })
     ),
     subtotal: v.number(),
+    discountAmount: v.optional(v.number()),
     vatAmount: v.number(),
     totalAmount: v.number(),
     paymentMethod: v.string(),
     mpesaRef: v.optional(v.string()),
+    amountReceived: v.optional(v.number()),
     customerName: v.optional(v.string()),
     customerPhone: v.optional(v.string()),
     servedBy: v.optional(v.string()),
@@ -50,14 +53,22 @@ export const completeSale = mutation({
       });
     }
 
+    const changeGiven =
+      args.amountReceived !== undefined
+        ? Math.max(0, args.amountReceived - args.totalAmount)
+        : undefined;
+
     const saleId = await ctx.db.insert("sales", {
       saleNumber,
       items: args.items,
       subtotal: args.subtotal,
+      discountAmount: args.discountAmount,
       vatAmount: args.vatAmount,
       totalAmount: args.totalAmount,
       paymentMethod: args.paymentMethod,
       mpesaRef: args.mpesaRef,
+      amountReceived: args.amountReceived,
+      changeGiven,
       customerName: args.customerName,
       customerPhone: args.customerPhone,
       servedBy: args.servedBy,
@@ -71,9 +82,12 @@ export const completeSale = mutation({
         .withIndex("by_phone", (q) => q.eq("phone", phone))
         .first();
       if (!existing) {
+        const customerNumber = await generateCustomerNumber(ctx);
         await ctx.db.insert("customers", {
+          customerNumber,
           name: args.customerName?.trim() || "Walk-in customer",
           phone,
+          creditBalance: 0,
         });
       }
     }
@@ -97,7 +111,7 @@ export const get = query({
 });
 
 export const voidSale = mutation({
-  args: { id: v.id("sales") },
+  args: { id: v.id("sales"), reason: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const sale = await ctx.db.get(args.id);
     if (!sale) throw new Error("Sale not found");
@@ -112,7 +126,11 @@ export const voidSale = mutation({
       }
     }
 
-    await ctx.db.patch(args.id, { status: "voided" });
-    await logAudit(ctx, "sale.void", `Voided sale ${sale.saleNumber}`);
+    await ctx.db.patch(args.id, { status: "voided", voidReason: args.reason });
+    await logAudit(
+      ctx,
+      "sale.void",
+      `Voided sale ${sale.saleNumber}${args.reason ? ` — ${args.reason}` : ""}`
+    );
   },
 });

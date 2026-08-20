@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 type FormState = {
   name: string;
   genericName: string;
+  description: string;
   category: string;
   sku: string;
   barcode: string;
@@ -29,6 +30,7 @@ type FormState = {
 const EMPTY: FormState = {
   name: "",
   genericName: "",
+  description: "",
   category: "",
   sku: "",
   barcode: "",
@@ -74,6 +76,7 @@ export function ProductForm({
       setForm({
         name: product.name,
         genericName: product.genericName ?? "",
+        description: product.description ?? "",
         category: product.category,
         sku: product.sku,
         barcode: product.barcode ?? "",
@@ -109,6 +112,7 @@ export function ProductForm({
       const payload = {
         name: form.name.trim(),
         genericName: form.genericName.trim() || undefined,
+        description: form.description.trim() || undefined,
         category: form.category,
         sku,
         barcode: form.barcode.trim() || undefined,
@@ -166,6 +170,17 @@ export function ProductForm({
         onChange={(e) => set("genericName", e.target.value)}
         placeholder="e.g. Paracetamol"
       />
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm text-text-secondary">Description</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => set("description", e.target.value)}
+          placeholder="Optional notes about this product"
+          rows={2}
+          className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-secondary outline-none transition-colors duration-150 focus:border-accent"
+        />
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
         <Dropdown

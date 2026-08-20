@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const PIN_LENGTH = 4;
 function AuthContent() {
   const settings = useQuery(api.settings.get);
   const staff = useQuery(api.staff.list);
+  const logLogin = useMutation(api.audit.logLogin);
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/pos";
@@ -28,7 +29,7 @@ function AuthContent() {
     if (!ready || success || entry.length < PIN_LENGTH) return;
 
     const adminMatch = entry === (settings!.passcode || "1234");
-    const staffMatch = staff!.find((s) => s.pin && s.pin === entry);
+    const staffMatch = staff!.find((s) => s.isActive && s.pin && s.pin === entry);
 
     if (adminMatch || staffMatch) {
       if (staffMatch) {
@@ -36,6 +37,7 @@ function AuthContent() {
       } else {
         sessionStorage.removeItem(CURRENT_STAFF_KEY);
       }
+      logLogin({ performedBy: staffMatch?.name });
       setSuccess(true);
     } else {
       setError(true);
@@ -45,7 +47,7 @@ function AuthContent() {
       }, 500);
       return () => clearTimeout(t);
     }
-  }, [entry, ready, success, settings, staff]);
+  }, [entry, ready, success, settings, staff, logLogin]);
 
   useEffect(() => {
     if (!success) return;
