@@ -70,3 +70,25 @@ export const create = mutation({
     return { returnNumber };
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("supplierReturns") },
+  handler: async (ctx, args) => {
+    const ret = await ctx.db.get(args.id);
+    if (!ret) throw new Error("Return not found");
+
+    for (const item of ret.items) {
+      const product = await ctx.db.get(item.productId);
+      if (product) {
+        await ctx.db.patch(item.productId, { stock: product.stock + item.quantity });
+      }
+    }
+
+    await ctx.db.delete(args.id);
+    await logAudit(
+      ctx,
+      "supplierReturn.remove",
+      `Deleted return ${ret.returnNumber} and restored its stock`
+    );
+  },
+});

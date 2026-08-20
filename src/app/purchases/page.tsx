@@ -442,6 +442,14 @@ function PurchaseDetailModal({
 
 function ReturnsList() {
   const returns = useQuery(api.supplierReturns.list);
+  const remove = useMutation(api.supplierReturns.remove);
+  const { showToast } = useToast();
+
+  async function handleDelete(id: Id<"supplierReturns">, returnNumber: string) {
+    if (!confirm(`Delete return ${returnNumber}? Stock will be restored.`)) return;
+    await remove({ id });
+    showToast("Return deleted, stock restored");
+  }
 
   if (returns === undefined) {
     return <p className="py-16 text-center text-sm text-text-secondary">Loading…</p>;
@@ -466,6 +474,12 @@ function ReturnsList() {
               {r.items.length === 1 ? "" : "s"} · {r.reason}
             </p>
           </div>
+          <button
+            onClick={() => handleDelete(r._id, r.returnNumber)}
+            className="shrink-0 text-text-secondary transition-colors duration-150 hover:text-danger"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       ))}
     </div>
