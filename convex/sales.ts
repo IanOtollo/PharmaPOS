@@ -134,3 +134,13 @@ export const voidSale = mutation({
     );
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("sales") },
+  handler: async (ctx, args) => {
+    const sale = await ctx.db.get(args.id);
+    if (!sale) throw new Error("Sale not found");
+    await ctx.db.delete(args.id);
+    await logAudit(ctx, "sale.remove", `Deleted sale ${sale.saleNumber}`);
+  },
+});
