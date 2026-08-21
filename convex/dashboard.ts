@@ -1,21 +1,12 @@
 import { query } from "./_generated/server";
-
-function isToday(timestamp: number): boolean {
-  const d = new Date(timestamp);
-  const now = new Date();
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  );
-}
+import { isSameEatDay } from "./time";
 
 export const summary = query({
   args: {},
   handler: async (ctx) => {
     const sales = await ctx.db.query("sales").collect();
     const todaySales = sales.filter(
-      (s) => s.status === "completed" && isToday(s._creationTime)
+      (s) => s.status === "completed" && isSameEatDay(s._creationTime)
     );
 
     const revenue = todaySales.reduce((sum, s) => sum + s.totalAmount, 0);

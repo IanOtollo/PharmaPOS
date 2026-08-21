@@ -1,5 +1,6 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { eatDateKey } from "./time";
 
 export const summary = query({
   args: { rangeDays: v.number() },
@@ -12,7 +13,7 @@ export const summary = query({
 
     const dailyMap = new Map<string, number>();
     for (const s of sales) {
-      const day = new Date(s._creationTime).toISOString().slice(0, 10);
+      const day = eatDateKey(s._creationTime);
       dailyMap.set(day, (dailyMap.get(day) ?? 0) + s.totalAmount);
     }
     const daily = Array.from(dailyMap.entries())

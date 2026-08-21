@@ -1,9 +1,10 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "./audit";
+import { eatDateKey } from "./time";
 
 function todayPrefix(): string {
-  return new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return eatDateKey(Date.now()).replace(/-/g, "");
 }
 
 export const list = query({

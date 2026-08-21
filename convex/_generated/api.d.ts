@@ -21,6 +21,7 @@ import type * as settings from "../settings.js";
 import type * as staff from "../staff.js";
 import type * as supplierReturns from "../supplierReturns.js";
 import type * as suppliers from "../suppliers.js";
+import type * as time from "../time.js";
 
 import type {
   ApiFromModules,
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   staff: typeof staff;
   supplierReturns: typeof supplierReturns;
   suppliers: typeof suppliers;
+  time: typeof time;
 }>;
 
 /**
