@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PharmaPOS — Favil Chemist & Pharmacy
 
-## Getting Started
+A point-of-sale system built for Favil Chemist & Pharmacy: fast checkout, drug inventory with expiry tracking, suppliers and purchase orders, customer records, sales reporting, and role-based staff access — all in a dark-mode-first, mobile-friendly interface.
 
-First, run the development server:
+## Stack
+
+- **Next.js 16** (App Router) + **TypeScript**
+- **Convex** — realtime database and backend functions
+- **Tailwind CSS 4** — no component library; everything is hand-built
+- Fonts: Playfair Display (display), DM Sans (body/UI), DM Mono (numbers/currency)
+
+## Features
+
+- **POS** — search/scan products, cart, checkout with cash / M-Pesa / card, discounts, change calculation, printable receipts
+- **Products** — catalog with category, pricing, stock levels, expiry, batch numbers, prescription flag
+- **Inventory** — stock levels, low-stock and expiry alerts, manual stock adjustments (restock/damage/return/correction)
+- **Suppliers & Purchases** — supplier directory, purchase orders that restock and update cost price, returns-to-supplier with a required reason
+- **Customers** — auto-created from checkout, purchase history, credit balances
+- **Sales history** — searchable, filterable, void with reason, CSV export
+- **Reports** — revenue trend, category/payment/staff/customer/supplier breakdowns, gross profit & margin, inventory valuation
+- **Dashboard** — daily summary, revenue chart, recent transactions, low-stock/expiry shortcuts
+- **Settings** — pharmacy name, VAT rate, admin passcode, staff & roles, categories, audit log
+- **Auth & roles** — PIN-based login (no accounts/passwords). One shared admin passcode has full access; individual staff PINs map to one of four roles with distinct access:
+  | Role | Access |
+  |---|---|
+  | Manager | POS, Sales, Inventory, Reports, Dashboard |
+  | Cashier | POS, Sales |
+  | Inventory Officer | Products, Inventory, Purchases, Dashboard |
+  | Supervisor | Dashboard, Sales, Reports |
+- **Audit log** — tracks logins, product/staff/settings changes, sale voids, purchases, and returns
+- **Light/dark theme toggle**, persisted per browser
+
+## Getting started
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set up Convex
+
+This project uses [Convex](https://www.convex.dev) for its backend. You'll need your own Convex project:
+
+```bash
+npx convex dev
+```
+
+This will prompt you to log in and create (or link) a Convex project, then write your deployment's URL into `.env.local` automatically and push the schema/functions in `convex/`.
+
+Copy `.env.example` for the shape of the required variables if you're wiring things up manually:
+
+```bash
+cp .env.example .env.local
+```
+
+`.env.local` is git-ignored — never commit it.
+
+### 3. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). The app redirects to `/auth`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### First login
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+A default admin passcode is baked in as a fallback (see `convex/settings.ts`) so you can get in on a fresh database. **Change it immediately** from Settings → General once you're in — the current passcode must be confirmed before a new one is accepted. Add real staff members and assign roles from Settings → Staff; each staff PIN must be unique and can't match the admin passcode (the backend rejects collisions).
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+convex/            Backend: schema + queries/mutations, one file per domain
+src/
+  app/              Routes (App Router) — one folder per page
+  components/
+    ui/             Generic primitives (Button, Input, Modal, Dropdown, ...)
+    layout/         TopNav, BottomNav, PageHeader
+    auth/           AppGate — session + role-based route enforcement
+    pos/ products/ inventory/ sales/ reports/ settings/
+                    Feature-specific components
+  lib/              utils.ts (formatting helpers), auth.ts (roles), constants.ts
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deployment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Deployed on [Vercel](https://vercel.com). To deploy your own instance:
 
-## Deploy on Vercel
+1. Push this repo to GitHub and import it into Vercel.
+2. Set the environment variables from `.env.example` in the Vercel project settings, pointing at your own Convex deployment.
+3. Deploy. No custom build configuration is needed.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+For a production Convex deployment (separate from your dev database), run `npx convex deploy --prod` and use its URL instead.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Notes
+
+- No seed/demo data — the catalog starts empty and is meant to be populated with real inventory.
+- No third-party payment integration; payment methods are recorded, not processed.
+- No barcode scanner hardware integration — barcodes are matched by manual entry/search.
