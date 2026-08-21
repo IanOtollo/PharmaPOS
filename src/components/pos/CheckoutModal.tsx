@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dropdown } from "@/components/ui/Dropdown";
 import { cn, formatKES } from "@/lib/utils";
-import { PAYMENT_METHODS, VAT_RATE } from "@/lib/constants";
+import { PAYMENT_METHODS } from "@/lib/constants";
 import { CURRENT_STAFF_KEY } from "@/components/auth/AppGate";
 import type { CartLine } from "@/components/pos/cart";
 
@@ -36,7 +36,9 @@ export function CheckoutModal({
   const [result, setResult] = useState<{ saleNumber: string } | null>(null);
   const completeSale = useMutation(api.sales.completeSale);
   const staff = useQuery(api.staff.list);
+  const settings = useQuery(api.settings.get);
   const activeStaff = (staff ?? []).filter((s) => s.isActive);
+  const vatRate = settings?.vatRate ?? 0.16;
 
   useEffect(() => {
     if (open) {
@@ -47,7 +49,7 @@ export function CheckoutModal({
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
   const discountAmount = Math.min(Number(discount) || 0, subtotal);
   const discountedSubtotal = subtotal - discountAmount;
-  const vat = discountedSubtotal * VAT_RATE;
+  const vat = discountedSubtotal * vatRate;
   const total = discountedSubtotal + vat;
   const received = method === "cash" ? Number(amountReceived) || 0 : total;
   const change = received - total;
@@ -142,7 +144,7 @@ export function CheckoutModal({
               </div>
             )}
             <div className="flex items-center justify-between text-sm text-text-secondary">
-              <span>VAT (16%)</span>
+              <span>VAT ({Math.round(vatRate * 100)}%)</span>
               <span className="font-numeric">{formatKES(vat)}</span>
             </div>
             <div className="flex items-center justify-between text-base font-medium text-text-primary">

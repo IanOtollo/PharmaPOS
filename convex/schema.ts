@@ -72,12 +72,19 @@ export default defineSchema({
   settings: defineTable({
     pharmacyName: v.string(),
     passcode: v.optional(v.string()),
+    vatRate: v.optional(v.number()),
   }),
 
   staff: defineTable({
     name: v.string(),
     pin: v.optional(v.string()),
     isActive: v.boolean(),
+    role: v.union(
+      v.literal("manager"),
+      v.literal("cashier"),
+      v.literal("inventory_officer"),
+      v.literal("supervisor")
+    ),
   }),
 
   customers: defineTable({

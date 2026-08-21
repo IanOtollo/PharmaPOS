@@ -1,6 +1,8 @@
 "use client";
 
 import { ShoppingCart } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { CartItem } from "@/components/pos/CartItem";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -22,8 +24,10 @@ export function CartPanel({
   onClear: () => void;
   onCheckout: () => void;
 }) {
+  const settings = useQuery(api.settings.get);
+  const vatRate = settings?.vatRate ?? 0.16;
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
-  const { vat, total } = calculateVAT(subtotal);
+  const { vat, total } = calculateVAT(subtotal, vatRate);
 
   return (
     <div className="flex h-full flex-col">
@@ -69,7 +73,7 @@ export function CartPanel({
           <span className="font-numeric">{formatKES(subtotal)}</span>
         </div>
         <div className="mt-1 flex items-center justify-between text-sm text-text-secondary">
-          <span>VAT (16%)</span>
+          <span>VAT ({Math.round(vatRate * 100)}%)</span>
           <span className="font-numeric">{formatKES(vat)}</span>
         </div>
         <div className="mt-2 flex items-center justify-between text-base font-medium text-text-primary">

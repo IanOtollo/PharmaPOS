@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "convex/react";
 import { ShoppingCart, X } from "lucide-react";
+import { api } from "../../../convex/_generated/api";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductSearch } from "@/components/pos/ProductSearch";
@@ -74,9 +76,10 @@ export default function PosPage() {
     showToast("Sale completed");
   }
 
+  const settings = useQuery(api.settings.get);
   const itemCount = lines.reduce((s, l) => s + l.quantity, 0);
   const subtotal = lines.reduce((s, l) => s + l.unitPrice * l.quantity, 0);
-  const { total } = calculateVAT(subtotal);
+  const { total } = calculateVAT(subtotal, settings?.vatRate ?? 0.16);
 
   return (
     <div className="lg:flex lg:h-[calc(100vh-8.5rem)]">

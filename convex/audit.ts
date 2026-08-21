@@ -13,7 +13,7 @@ export async function logAudit(
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("auditLogs").order("desc").take(100);
+    return await ctx.db.query("auditLogs").order("desc").take(20);
   },
 });
 

@@ -8,9 +8,13 @@ import { api } from "../../../convex/_generated/api";
 import { Doc } from "../../../convex/_generated/dataModel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/Input";
+import { Dropdown } from "@/components/ui/Dropdown";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import { cn, formatDateTime } from "@/lib/utils";
+import { STAFF_ROLES, ROLE_LABELS, type StaffRole } from "@/lib/auth";
+
+const ROLE_OPTIONS = STAFF_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }));
 
 const AUDIT_LABEL: Record<string, string> = {
   "product.create": "Product added",
@@ -29,6 +33,7 @@ function GeneralSettings() {
   const { showToast } = useToast();
 
   const [pharmacyName, setPharmacyName] = useState("");
+  const [vatRate, setVatRate] = useState("16");
   const [currentPasscode, setCurrentPasscode] = useState("");
   const [newPasscode, setNewPasscode] = useState("");
   const [error, setError] = useState("");
@@ -37,6 +42,7 @@ function GeneralSettings() {
   useEffect(() => {
     if (settings) {
       setPharmacyName(settings.pharmacyName);
+      setVatRate(String(Math.round((settings.vatRate ?? 0.16) * 100)));
     }
   }, [settings]);
 
@@ -56,11 +62,14 @@ function GeneralSettings() {
       passcodeToSave = newPasscode.trim();
     }
 
+    const rate = Math.min(100, Math.max(0, Number(vatRate) || 0)) / 100;
+
     setSubmitting(true);
     try {
       await update({
         pharmacyName: pharmacyName.trim(),
         passcode: passcodeToSave,
+        vatRate: rate,
       });
       setCurrentPasscode("");
       setNewPasscode("");
@@ -93,6 +102,16 @@ function GeneralSettings() {
         onChange={(e) => setPharmacyName(e.target.value)}
         placeholder="e.g. Riverside Pharmacy"
         required
+      />
+
+      <Input
+        label="VAT rate (%)"
+        type="number"
+        min="0"
+        max="100"
+        step="0.1"
+        value={vatRate}
+        onChange={(e) => setVatRate(e.target.value)}
       />
 
       <div className="border-t border-border pt-4">
@@ -146,21 +165,28 @@ function StaffEditModal({
 
   const [name, setName] = useState(staff?.name ?? "");
   const [pin, setPin] = useState(staff?.pin ?? "");
+  const [role, setRole] = useState<StaffRole>(staff?.role ?? "cashier");
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setName(staff?.name ?? "");
     setPin(staff?.pin ?? "");
+    setRole(staff?.role ?? "cashier");
+    setError("");
   }, [staff]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!staff || !name.trim()) return;
+    setError("");
     setSubmitting(true);
     try {
-      await update({ id: staff._id, name: name.trim(), pin: pin.trim() || undefined });
+      await update({ id: staff._id, name: name.trim(), pin: pin.trim() || undefined, role });
       showToast("Staff member updated");
       onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -193,6 +219,16 @@ function StaffEditModal({
             value={pin}
             onChange={(e) => setPin(e.target.value)}
           />
+          <Dropdown
+            label="Role"
+            value={role}
+            onChange={(v) => setRole(v as StaffRole)}
+            options={ROLE_OPTIONS}
+          />
+
+          {error && (
+            <p className="rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
+          )}
 
           <Button
             type="button"
@@ -229,18 +265,23 @@ function StaffSettings() {
 
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
+  const [role, setRole] = useState<StaffRole>("cashier");
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<Doc<"staff"> | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
+    setError("");
     setSubmitting(true);
     try {
-      await create({ name: name.trim(), pin: pin.trim() || undefined });
+      await create({ name: name.trim(), pin: pin.trim() || undefined, role });
       setName("");
       setPin("");
       showToast("Staff member added");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -280,6 +321,12 @@ function StaffSettings() {
             <UserPlus size={16} /> Add
           </Button>
         </div>
+        <Dropdown
+          value={role}
+          onChange={(v) => setRole(v as StaffRole)}
+          options={ROLE_OPTIONS}
+        />
+        {error && <p className="text-sm text-danger">{error}</p>}
       </form>
 
       <div className="mt-4 flex flex-1 flex-col divide-y divide-border overflow-y-auto">
@@ -294,29 +341,34 @@ function StaffSettings() {
               onClick={() => setEditing(s)}
               className="flex items-center justify-between py-3 text-left transition-colors duration-150 hover:bg-surface-hover"
             >
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "text-sm",
-                    s.isActive ? "text-text-primary" : "text-text-secondary line-through"
+              <div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "text-sm",
+                      s.isActive ? "text-text-primary" : "text-text-secondary line-through"
+                    )}
+                  >
+                    {s.name}
+                  </span>
+                  {s.pin ? (
+                    <span className="rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
+                      PIN set
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-surface-hover px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
+                      No PIN
+                    </span>
                   )}
-                >
-                  {s.name}
-                </span>
-                {s.pin ? (
-                  <span className="rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent">
-                    PIN set
-                  </span>
-                ) : (
-                  <span className="rounded-md bg-surface-hover px-1.5 py-0.5 text-[10px] font-medium text-text-secondary">
-                    No PIN
-                  </span>
-                )}
-                {!s.isActive && (
-                  <span className="rounded-md bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger">
-                    Inactive
-                  </span>
-                )}
+                  {!s.isActive && (
+                    <span className="rounded-md bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger">
+                      Inactive
+                    </span>
+                  )}
+                </div>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  {ROLE_LABELS[s.role ?? "cashier"]}
+                </p>
               </div>
             </button>
           ))

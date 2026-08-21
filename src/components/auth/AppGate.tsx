@@ -7,12 +7,13 @@ import { TopNav } from "@/components/layout/TopNav";
 import {
   AUTH_SESSION_KEY,
   CURRENT_STAFF_KEY,
-  STAFF_DEFAULT_PATH,
+  CURRENT_ROLE_KEY,
   getRole,
   isPathAllowed,
+  defaultPathFor,
 } from "@/lib/auth";
 
-export { AUTH_SESSION_KEY, CURRENT_STAFF_KEY };
+export { AUTH_SESSION_KEY, CURRENT_STAFF_KEY, CURRENT_ROLE_KEY };
 
 export function AppGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -34,7 +35,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
 
     const role = getRole();
     if (!isPathAllowed(role, pathname)) {
-      router.replace(STAFF_DEFAULT_PATH);
+      router.replace(defaultPathFor(role));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
@@ -50,6 +51,7 @@ export function AppGate({ children }: { children: React.ReactNode }) {
   function handleLogout() {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
     sessionStorage.removeItem(CURRENT_STAFF_KEY);
+    sessionStorage.removeItem(CURRENT_ROLE_KEY);
     router.replace("/auth");
   }
 

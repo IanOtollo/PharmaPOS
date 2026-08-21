@@ -10,6 +10,7 @@ export const get = query({
       settings ?? {
         pharmacyName: "Favil Chemist & Pharmacy",
         passcode: "1234",
+        vatRate: 0.16,
       }
     );
   },
@@ -19,6 +20,7 @@ export const update = mutation({
   args: {
     pharmacyName: v.string(),
     passcode: v.optional(v.string()),
+    vatRate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const existing = await ctx.db.query("settings").first();

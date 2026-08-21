@@ -7,7 +7,7 @@ import { Lock, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import { PinKeypad } from "@/components/settings/PinKeypad";
-import { AUTH_SESSION_KEY, CURRENT_STAFF_KEY } from "@/components/auth/AppGate";
+import { AUTH_SESSION_KEY, CURRENT_STAFF_KEY, CURRENT_ROLE_KEY } from "@/components/auth/AppGate";
 
 const PIN_LENGTH = 4;
 
@@ -34,8 +34,10 @@ function AuthContent() {
     if (adminMatch || staffMatch) {
       if (staffMatch) {
         sessionStorage.setItem(CURRENT_STAFF_KEY, staffMatch.name);
+        sessionStorage.setItem(CURRENT_ROLE_KEY, staffMatch.role ?? "cashier");
       } else {
         sessionStorage.removeItem(CURRENT_STAFF_KEY);
+        sessionStorage.removeItem(CURRENT_ROLE_KEY);
       }
       logLogin({ performedBy: staffMatch?.name });
       setSuccess(true);

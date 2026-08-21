@@ -17,7 +17,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getRole } from "@/lib/auth";
+import { getRole, type StaffRole } from "@/lib/auth";
 import { Modal } from "@/components/ui/Modal";
 
 type NavItem = { href: string; label: string; icon: typeof Pill; desktopOnly?: boolean };
@@ -40,6 +40,31 @@ const RIGHT_ITEMS: NavItem[] = [
 const MORE_ITEMS: NavItem[] = [...LEFT_ITEMS, ...RIGHT_ITEMS].filter((i) => i.desktopOnly);
 
 const POS_ITEM = { href: "/pos", label: "POS", icon: ShoppingCart };
+
+// Per-role nav sets for the four non-admin SRS roles. Order determines
+// left-of-POS vs right-of-POS placement; roles without "/pos" render as a
+// plain evenly-spaced row.
+const ITEM_REGISTRY: Record<string, Omit<NavItem, "href">> = {
+  "/dashboard": { label: "Dashboard", icon: LayoutDashboard },
+  "/products": { label: "Products", icon: Pill },
+  "/inventory": { label: "Inventory", icon: Package },
+  "/purchases": { label: "Purchases", icon: ShoppingBasket },
+  "/sales": { label: "Sales", icon: Receipt },
+  "/reports": { label: "Reports", icon: BarChart3 },
+};
+
+const ROLE_NAV_PATHS: Record<StaffRole, string[]> = {
+  manager: ["/dashboard", "/inventory", "/pos", "/sales", "/reports"],
+  cashier: ["/pos", "/sales"],
+  inventory_officer: ["/dashboard", "/products", "/inventory", "/purchases"],
+  supervisor: ["/dashboard", "/sales", "/reports"],
+};
+
+function splitAtPos(paths: string[]) {
+  const idx = paths.indexOf("/pos");
+  if (idx === -1) return { left: paths, right: [], hasPos: false };
+  return { left: paths.slice(0, idx), right: paths.slice(idx + 1), hasPos: true };
+}
 
 function NavLink({
   href,
@@ -67,6 +92,26 @@ function NavLink({
   );
 }
 
+function PosButton({ active }: { active: boolean }) {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <Link
+        href={POS_ITEM.href}
+        aria-label={POS_ITEM.label}
+        className={cn(
+          "flex h-14 w-14 -translate-y-4 flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-colors duration-150 lg:h-12 lg:w-12 lg:-translate-y-3",
+          active
+            ? "border-accent-hover bg-accent text-background"
+            : "border-accent-hover bg-accent text-background hover:bg-accent-hover"
+        )}
+      >
+        <POS_ITEM.icon size={22} strokeWidth={2} />
+        <span className="text-[9px] font-medium">{POS_ITEM.label}</span>
+      </Link>
+    </div>
+  );
+}
+
 function MoreButton({ onClick, active }: { onClick: () => void; active: boolean }) {
   return (
     <button
@@ -87,77 +132,74 @@ function MoreButton({ onClick, active }: { onClick: () => void; active: boolean 
 
 export function BottomNav() {
   const pathname = usePathname();
-  const [isStaff, setIsStaff] = useState(false);
+  const [role, setRole] = useState<"admin" | StaffRole>("admin");
   const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
-    setIsStaff(getRole() === "staff");
+    setRole(getRole());
   }, []);
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
-  const leftItems = isStaff ? [] : LEFT_ITEMS;
-  const rightItems = isStaff
-    ? RIGHT_ITEMS.filter((i) => i.href === "/sales")
-    : RIGHT_ITEMS;
+  if (role !== "admin") {
+    const paths = ROLE_NAV_PATHS[role];
+    const { left, right, hasPos } = splitAtPos(paths);
+
+    return (
+      <nav className="no-print fixed inset-x-4 bottom-4 z-50 mx-auto h-16 max-w-3xl rounded-lg border border-border bg-surface shadow-sm lg:h-14">
+        <div className="mx-auto flex h-full items-stretch justify-evenly">
+          {left.map((href) => (
+            <NavLink key={href} href={href} {...ITEM_REGISTRY[href]} active={isActive(href)} />
+          ))}
+          {hasPos && <PosButton active={isActive("/pos")} />}
+          {right.map((href) => (
+            <NavLink key={href} href={href} {...ITEM_REGISTRY[href]} active={isActive(href)} />
+          ))}
+        </div>
+      </nav>
+    );
+  }
+
   const moreActive = MORE_ITEMS.some((i) => isActive(i.href));
 
   return (
     <>
       <nav className="no-print fixed inset-x-4 bottom-4 z-50 mx-auto h-16 max-w-3xl rounded-lg border border-border bg-surface shadow-sm lg:h-14 lg:max-w-5xl">
         <div className="mx-auto flex h-full items-stretch justify-evenly">
-          {leftItems.map((item) => (
+          {LEFT_ITEMS.map((item) => (
             <NavLink key={item.href} {...item} active={isActive(item.href)} />
           ))}
 
-          <div className="flex flex-1 items-center justify-center">
-            <Link
-              href={POS_ITEM.href}
-              aria-label={POS_ITEM.label}
-              className={cn(
-                "flex h-14 w-14 -translate-y-4 flex-col items-center justify-center gap-0.5 rounded-full border shadow-sm transition-colors duration-150 lg:h-12 lg:w-12 lg:-translate-y-3",
-                isActive(POS_ITEM.href)
-                  ? "border-accent-hover bg-accent text-background"
-                  : "border-accent-hover bg-accent text-background hover:bg-accent-hover"
-              )}
-            >
-              <POS_ITEM.icon size={22} strokeWidth={2} />
-              <span className="text-[9px] font-medium">{POS_ITEM.label}</span>
-            </Link>
-          </div>
+          <PosButton active={isActive(POS_ITEM.href)} />
 
-          {rightItems.map((item) => (
+          {RIGHT_ITEMS.map((item) => (
             <NavLink key={item.href} {...item} active={isActive(item.href)} />
           ))}
 
-          {!isStaff && (
-            <MoreButton onClick={() => setMoreOpen(true)} active={moreActive} />
-          )}
+          <MoreButton onClick={() => setMoreOpen(true)} active={moreActive} />
         </div>
       </nav>
 
-      {!isStaff && (
-        <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
-          <div className="grid grid-cols-3 gap-3">
-            {MORE_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMoreOpen(false)}
-                className={cn(
-                  "flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors duration-150 hover:bg-surface-hover",
-                  isActive(item.href) && "border-accent-hover text-accent"
-                )}
-              >
-                <item.icon size={20} />
-                <span className="text-xs font-medium">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </Modal>
-      )}
+      <Modal open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
+        <div className="grid grid-cols-3 gap-3">
+          {MORE_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMoreOpen(false)}
+              className={cn(
+                "flex flex-col items-center gap-2 rounded-lg border border-border p-4 text-center transition-colors duration-150 hover:bg-surface-hover",
+                isActive(item.href) && "border-accent-hover text-accent"
+              )}
+            >
+              <item.icon size={20} />
+              <span className="text-xs font-medium">{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </Modal>
     </>
   );
 }

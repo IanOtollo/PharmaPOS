@@ -24,6 +24,9 @@ export function ReceiptView({ sale }: { sale: Doc<"sales"> }) {
   const router = useRouter();
   const { showToast } = useToast();
 
+  const vatBase = sale.subtotal - (sale.discountAmount ?? 0);
+  const vatPercent = vatBase > 0 ? Math.round((sale.vatAmount / vatBase) * 100) : 16;
+
   async function handleVoid() {
     if (!confirm(`Void sale ${sale.saleNumber}? Stock will be restored.`)) return;
     const reason = prompt("Reason for voiding this sale (optional):") ?? undefined;
@@ -99,7 +102,7 @@ export function ReceiptView({ sale }: { sale: Doc<"sales"> }) {
             </div>
           ) : null}
           <div className="flex justify-between text-text-secondary">
-            <span>VAT (16%)</span>
+            <span>VAT ({vatPercent}%)</span>
             <span className="font-numeric">{formatKES(sale.vatAmount)}</span>
           </div>
           <div className="flex justify-between text-base font-medium text-text-primary">

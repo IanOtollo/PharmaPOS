@@ -9,8 +9,11 @@ export function formatKES(amount: number): string {
   })}`;
 }
 
-export function calculateVAT(subtotal: number): { vat: number; total: number } {
-  const vat = subtotal * 0.16;
+export function calculateVAT(
+  subtotal: number,
+  rate: number = 0.16
+): { vat: number; total: number } {
+  const vat = subtotal * rate;
   return { vat, total: subtotal + vat };
 }
 
